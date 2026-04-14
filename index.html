@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EAN Barcode Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <style>
+    :root {
+      --bg: #eef3fb;
+      --bg-2: #f8fbff;
+      --card: rgba(255,255,255,0.92);
+      --line: #d8e1ef;
+      --line-soft: #e9eef7;
+      --text: #172033;
+      --muted: #667085;
+      --accent: #2563eb;
+      --accent-2: #1d4ed8;
+      --accent-soft: #dbeafe;
+      --success: #047857;
+      --success-soft: #ecfdf5;
+      --warning: #9a6700;
+      --warning-soft: #fff8db;
+      --danger: #b42318;
+      --danger-soft: #fef3f2;
+      --shadow-lg: 0 22px 60px rgba(15, 23, 42, 0.10);
+      --shadow-md: 0 14px 34px rgba(15, 23, 42, 0.07);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(37,99,235,0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(59,130,246,0.10), transparent 22%),
+        linear-gradient(180deg, #f7faff 0%, #eef3fb 42%, #edf2f9 100%);
+    }
+
+    .wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(239,246,255,0.96) 52%, rgba(219,234,254,0.82) 100%);
+      border: 1px solid rgba(255,255,255,0.75);
+      border-radius: 28px;
+      padding: 32px;
+      box-shadow: var(--shadow-lg);
+      margin-bottom: 22px;
+      backdrop-filter: blur(14px);
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+
+    .hero::before {
+      width: 240px;
+      height: 240px;
+      right: -40px;
+      top: -80px;
+      background: rgba(37,99,235,0.10);
+    }
+
+    .hero::after {
+      width: 140px;
+      height: 140px;
+      right: 140px;
+      bottom: -60px;
+      background: rgba(59,130,246,0.08);
+    }
+
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 360px);
+      gap: 18px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.75);
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      border: 1px solid rgba(37,99,235,0.12);
+      margin-bottom: 14px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 4vw, 42px);
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 15px;
+      max-width: 72ch;
+    }
+
+    .hero-panel {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid rgba(255,255,255,0.85);
+      border-radius: 22px;
+      box-shadow: 0 12px 30px rgba(37,99,235,0.09);
+      padding: 18px;
+    }
+
+    .hero-panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .hero-steps {
+      display: grid;
+      gap: 12px;
+    }
+
+    .hero-step {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .hero-step-number {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: var(--accent-2);
+      background: var(--accent-soft);
+      border: 1px solid rgba(37,99,235,0.12);
+    }
+
+    .hero-step strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 3px;
+    }
+
+    .hero-step span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.75);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+    }
+
+    .section {
+      padding: 22px 22px 20px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .section:last-child { border-bottom: 0; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    h2 {
+      font-size: 18px;
+      letter-spacing: -0.02em;
+      margin: 0;
+    }
+
+    .section-tag {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .dropzone {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 182px;
+      border: 2px dashed #a7b7cf;
+      border-radius: 22px;
+      padding: 24px;
+      text-align: center;
+      background: linear-gradient(180deg, #fcfdff 0%, #f5f9ff 100%);
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+      cursor: pointer;
+      overflow: hidden;
+    }
+
+    .dropzone::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(37,99,235,0.08);
+      pointer-events: none;
+    }
+
+    .dropzone.dragover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #f4f9ff 0%, #eaf3ff 100%);
+      box-shadow: 0 14px 34px rgba(37,99,235,0.12);
+    }
+
+    .dropzone .icon {
+      width: 58px;
+      height: 58px;
+      margin: 0 auto 12px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: var(--accent-soft);
+      color: var(--accent-2);
+      box-shadow: inset 0 0 0 1px rgba(37,99,235,0.10);
+    }
+
+    .dropzone .title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 6px;
+    }
+
+    .dropzone .subtitle {
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 13px;
+      max-width: 30ch;
+      margin: 0 auto;
+    }
+
+    input[type="file"] { display: none; }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      appearance: none;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+    }
+
+    button:hover:not(:disabled) { transform: translateY(-1px); }
+    button:active:not(:disabled) { transform: translateY(0); }
+
+    .primary {
+      background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+    }
+
+    .secondary {
+      background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+      color: #1d4ed8;
+    }
+
+    .ghost {
+      background: #f8fafc;
+      color: var(--text);
+      border: 1px solid var(--line);
+      box-shadow: none;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .status {
+      padding: 14px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      margin-top: 14px;
+      white-space: pre-line;
+    }
+
+    .status.ok {
+      border-color: #a7f3d0;
+      background: var(--success-soft);
+      color: #065f46;
+    }
+
+    .status.warn {
+      border-color: #f3d37a;
+      background: var(--warning-soft);
+      color: var(--warning);
+    }
+
+    .status.error {
+      border-color: #f5c2c7;
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .stat {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+    }
+
+    .stat::after {
+      content: "";
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      right: -22px;
+      top: -22px;
+      border-radius: 50%;
+      background: rgba(37,99,235,0.05);
+    }
+
+    .stat .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .stat .value {
+      font-size: 18px;
+      font-weight: 800;
+      position: relative;
+      z-index: 1;
+      overflow-wrap: anywhere;
+    }
+
+    .info-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .info-list li {
+      display: grid;
+      grid-template-columns: 10px 1fr;
+      gap: 12px;
+      align-items: start;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .info-list li::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-top: 7px;
+      background: linear-gradient(180deg, #60a5fa 0%, #2563eb 100%);
+      box-shadow: 0 0 0 4px rgba(37,99,235,0.08);
+    }
+
+    .preview-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .preview-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search {
+      min-width: 240px;
+      max-width: 320px;
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.92);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+    }
+
+    .search:focus {
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 4px rgba(59,130,246,0.14);
+    }
+
+    .preview-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      max-height: 78vh;
+      margin: 0 12px 12px;
+      border: 1px solid var(--line-soft);
+      border-radius: 18px;
+      background: white;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      background: white;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: linear-gradient(180deg, #162033 0%, #0f172a 100%);
+      color: white;
+      padding: 12px 12px;
+      text-align: left;
+      white-space: nowrap;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    thead th:first-child { border-top-left-radius: 16px; }
+    thead th:last-child { border-top-right-radius: 16px; }
+
+    tbody td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #edf2f7;
+      vertical-align: middle;
+      white-space: nowrap;
+      background-clip: padding-box;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: #fbfdff;
+    }
+
+    tbody tr:hover td {
+      background: #f4f8ff;
+    }
+
+    .barcode-cell {
+      min-width: 240px;
+      background: linear-gradient(180deg, #fff 0%, #fcfdff 100%);
+      overflow: hidden;
+    }
+
+    .barcode-cell svg {
+      display: block;
+      width: 210px;
+      height: 62px;
+      margin: 0 auto;
+      overflow: hidden;
+      shape-rendering: geometricPrecision;
+    }
+
+    .barcode-empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .muted { color: var(--muted); }
+    .small { font-size: 12px; }
+
+    @media (max-width: 1160px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      .wrap { padding: 16px; }
+      .hero { padding: 24px; border-radius: 24px; }
+      .section { padding: 18px; }
+      .meta { grid-template-columns: 1fr; }
+      .preview-actions { width: 100%; }
+      .search { min-width: 0; max-width: none; }
+      .table-wrap { max-height: none; margin: 0; border-left: 0; border-right: 0; border-bottom: 0; border-radius: 0 0 24px 24px; }
+      .card { border-radius: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">EAN dashboard · Excel upload · Downloadbaar resultaat</div>
+          <h1>EAN barcodes automatisch toevoegen aan je Excel-bestand</h1>
+          <p>Laad een Excel-bestand in, laat automatisch een barcode genereren in de kolom <strong>Barcode Terliksabo</strong> op basis van de waarde in <strong>EAN</strong>, bekijk de preview en download daarna het aangepaste Excel-bestand opnieuw.</p>
+        </div>
+        <div class="hero-panel">
+          <div class="hero-panel-title">Proces in 3 stappen</div>
+          <div class="hero-steps">
+            <div class="hero-step">
+              <div class="hero-step-number">1</div>
+              <div><strong>Bestand kiezen</strong><span>Upload een .xlsx-bestand via klik of drag &amp; drop.</span></div>
+            </div>
+            <div class="hero-step">
+              <div class="hero-step-number">2</div>
+              <div><strong>Barcodes genereren</strong><span>De kolommen EAN en Barcode Terliksabo worden automatisch herkend.</span></div>
+            </div>
+            <div class="hero-step">
+              <div class="hero-step-number">3</div>
+              <div><strong>Downloaden</strong><span>Het aangepaste Excel-bestand wordt met barcode-afbeeldingen aangemaakt.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="section">
+          <div class="section-header">
+            <h2>Bestand uploaden</h2>
+            <div class="section-tag">.xlsx</div>
+          </div>
+
+          <label class="dropzone" id="dropzone" for="fileInput">
+            <div>
+              <div class="icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <path d="M14 2v6h6"></path>
+                  <path d="M12 18v-6"></path>
+                  <path d="m9 15 3-3 3 3"></path>
+                </svg>
+              </div>
+              <div class="title">Klik om een Excel-bestand te kiezen</div>
+              <div class="subtitle">Je kunt ook een bestand naar dit vlak slepen. Alleen .xlsx wordt ondersteund.</div>
+            </div>
+          </label>
+          <input id="fileInput" type="file" accept=".xlsx" />
+
+          <div class="button-row">
+            <button class="primary" id="loadButton" disabled>Bestand verwerken</button>
+            <button class="secondary" id="downloadButton" disabled>Aangepast bestand downloaden</button>
+            <button class="ghost" id="resetButton">Reset</button>
+          </div>
+
+          <div class="status" id="statusBox">Nog geen bestand geladen.</div>
+
+          <div class="meta">
+            <div class="stat">
+              <div class="label">Bestandsnaam</div>
+              <div class="value" id="fileName">-</div>
+            </div>
+            <div class="stat">
+              <div class="label">Worksheet</div>
+              <div class="value" id="sheetName">-</div>
+            </div>
+            <div class="stat">
+              <div class="label">Rijen verwerkt</div>
+              <div class="value" id="rowCount">0</div>
+            </div>
+            <div class="stat">
+              <div class="label">Barcodes geplaatst</div>
+              <div class="value" id="barcodeCount">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <h2>Wat doet dit dashboard?</h2>
+            <div class="section-tag">Automatisch</div>
+          </div>
+          <ul class="info-list">
+            <li>Zoekt in de eerste sheet naar de kolommen <strong>EAN</strong> en <strong>Barcode Terliksabo</strong>.</li>
+            <li>Genereert per rij een EAN-13 barcode op basis van de cijfers uit de kolom <strong>EAN</strong>.</li>
+            <li>Toont een preview in de browser en zet de barcode als afbeelding terug in het downloadbare Excel-bestand.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section">
+          <div class="preview-header">
+            <div>
+              <h2>Preview</h2>
+              <div class="muted small">De preview laat zien hoe de barcode per rij wordt gegenereerd. In de download worden de barcodes als afbeelding in Excel geplaatst.</div>
+            </div>
+            <div class="preview-actions">
+              <input class="search" id="searchInput" type="search" placeholder="Zoek in preview..." />
+            </div>
+          </div>
+          <div class="preview-meta">
+            <div class="pill" id="visibleRowsPill">Zichtbare rijen: 0</div>
+            <div class="pill">Max. 200 previewrijen</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="previewTable">
+            <thead><tr><th>Geen data geladen</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      file: null,
+      workbook: null,
+      worksheet: null,
+      sheetName: null,
+      headerRowNumber: null,
+      headers: [],
+      eanCol: null,
+      barcodeCol: null,
+      dataRows: [],
+      barcodeImages: new Map(),
+      outputBuffer: null,
+      fileBaseName: 'bestand',
+      searchTerm: ''
+    };
+
+    const els = {
+      fileInput: document.getElementById('fileInput'),
+      dropzone: document.getElementById('dropzone'),
+      loadButton: document.getElementById('loadButton'),
+      downloadButton: document.getElementById('downloadButton'),
+      resetButton: document.getElementById('resetButton'),
+      statusBox: document.getElementById('statusBox'),
+      fileName: document.getElementById('fileName'),
+      sheetName: document.getElementById('sheetName'),
+      rowCount: document.getElementById('rowCount'),
+      barcodeCount: document.getElementById('barcodeCount'),
+      previewTable: document.getElementById('previewTable'),
+      searchInput: document.getElementById('searchInput'),
+      visibleRowsPill: document.getElementById('visibleRowsPill')
+    };
+
+    function setStatus(message, type = '') {
+      els.statusBox.textContent = message;
+      els.statusBox.className = 'status' + (type ? ' ' + type : '');
+    }
+
+    function resetState() {
+      state.file = null;
+      state.workbook = null;
+      state.worksheet = null;
+      state.sheetName = null;
+      state.headerRowNumber = null;
+      state.headers = [];
+      state.eanCol = null;
+      state.barcodeCol = null;
+      state.dataRows = [];
+      state.barcodeImages = new Map();
+      state.outputBuffer = null;
+      state.fileBaseName = 'bestand';
+      state.searchTerm = '';
+      els.fileInput.value = '';
+      els.searchInput.value = '';
+      els.loadButton.disabled = true;
+      els.downloadButton.disabled = true;
+      els.fileName.textContent = '-';
+      els.sheetName.textContent = '-';
+      els.rowCount.textContent = '0';
+      els.barcodeCount.textContent = '0';
+      els.visibleRowsPill.textContent = 'Zichtbare rijen: 0';
+      renderEmptyTable();
+      setStatus('Nog geen bestand geladen.');
+    }
+
+    function renderEmptyTable() {
+      els.previewTable.innerHTML = '<thead><tr><th>Geen data geladen</th></tr></thead><tbody></tbody>';
+    }
+
+    function colToLetter(col) {
+      let temp = '';
+      let n = col;
+      while (n > 0) {
+        let rem = (n - 1) % 26;
+        temp = String.fromCharCode(65 + rem) + temp;
+        n = Math.floor((n - 1) / 26);
+      }
+      return temp;
+    }
+
+    function normalizeHeader(value) {
+      return String(value ?? '').trim().toLowerCase();
+    }
+
+    function formatEAN(value) {
+      if (value === null || value === undefined || value === '') return '';
+      let raw = String(value).trim();
+      raw = raw.replace(/\.0+$/, '');
+      raw = raw.replace(/\D/g, '');
+      if (!raw) return '';
+      if (raw.length < 13) raw = raw.padStart(13, '0');
+      if (raw.length > 13) raw = raw.slice(0, 13);
+      return raw;
+    }
+
+    function isLikelyEAN13(value) {
+      return /^\d{12,13}$/.test(String(value || '').replace(/\D/g, ''));
+    }
+
+    function generateBarcodeDataUrl(eanText) {
+      const canvas = document.createElement('canvas');
+      JsBarcode(canvas, eanText, {
+        format: 'EAN13',
+        displayValue: true,
+        font: 'Arial',
+        fontSize: 16,
+        height: 50,
+        margin: 0,
+        width: 2,
+        background: '#ffffff'
+      });
+      return canvas.toDataURL('image/png');
+    }
+
+    function findHeaderRowAndColumns(worksheet) {
+      const maxRowToCheck = Math.min(20, worksheet.rowCount || 20);
+      for (let rowNumber = 1; rowNumber <= maxRowToCheck; rowNumber++) {
+        const row = worksheet.getRow(rowNumber);
+        const values = [];
+        for (let c = 1; c <= row.cellCount; c++) values.push(row.getCell(c).value);
+        const normalized = values.map(normalizeHeader);
+        const eanIndex = normalized.indexOf('ean');
+        const barcodeIndex = normalized.indexOf('barcode terliksabo');
+        if (eanIndex !== -1 && barcodeIndex !== -1) {
+          return {
+            headerRowNumber: rowNumber,
+            eanCol: eanIndex + 1,
+            barcodeCol: barcodeIndex + 1,
+            headers: values
+          };
+        }
+      }
+      throw new Error("Kolommen 'EAN' en/of 'Barcode Terliksabo' niet gevonden in de eerste 20 rijen.");
+    }
+
+    function readRowDisplayValues(row, maxCol) {
+      const values = [];
+      for (let c = 1; c <= maxCol; c++) {
+        const cell = row.getCell(c);
+        let value = cell.value;
+        if (value && typeof value === 'object') {
+          if (value.text) value = value.text;
+          else if (value.richText) value = value.richText.map(x => x.text).join('');
+          else if (value.result != null) value = value.result;
+          else if (value.hyperlink) value = value.text || value.hyperlink;
+          else value = '';
+        }
+        values.push(value ?? '');
+      }
+      return values;
+    }
+
+    function getFilteredRows() {
+      const term = state.searchTerm.trim().toLowerCase();
+      if (!term) return state.dataRows;
+      return state.dataRows.filter((rowInfo) => {
+        const combined = rowInfo.displayValues.map(v => String(v ?? '').toLowerCase()).join(' | ');
+        return combined.includes(term) || String(rowInfo.barcodeText || '').includes(term);
+      });
+    }
+
+    function renderPreview() {
+      const filteredRows = getFilteredRows();
+      const previewRows = filteredRows.slice(0, 200);
+      els.visibleRowsPill.textContent = `Zichtbare rijen: ${filteredRows.length}`;
+
+      const previewHeaders = state.headers.map((h, idx) => h || `Kolom ${colToLetter(idx + 1)}`);
+      let thead = '<thead><tr>' + previewHeaders.map(h => `<th>${escapeHtml(String(h))}</th>`).join('') + '</tr></thead>';
+      let tbody = '<tbody>';
+
+      if (!previewRows.length) {
+        tbody += '<tr><td colspan="' + previewHeaders.length + '" class="barcode-empty">Geen rijen gevonden voor deze zoekopdracht.</td></tr>';
+      } else {
+        for (let i = 0; i < previewRows.length; i++) {
+          const rowInfo = previewRows[i];
+          tbody += '<tr>';
+          for (let c = 0; c < rowInfo.displayValues.length; c++) {
+            const colNumber = c + 1;
+            if (colNumber === state.barcodeCol) {
+              if (rowInfo.barcodeDataUrl) {
+                tbody += `<td class="barcode-cell"><svg id="svg-preview-${i}"></svg></td>`;
+              } else {
+                tbody += '<td class="barcode-empty">Geen geldige EAN</td>';
+              }
+            } else {
+              tbody += `<td>${escapeHtml(String(rowInfo.displayValues[c] ?? ''))}</td>`;
+            }
+          }
+          tbody += '</tr>';
+        }
+      }
+      tbody += '</tbody>';
+      els.previewTable.innerHTML = thead + tbody;
+
+      for (let i = 0; i < previewRows.length; i++) {
+        const rowInfo = previewRows[i];
+        if (rowInfo.barcodeText) {
+          const svg = document.getElementById(`svg-preview-${i}`);
+          if (svg) {
+            JsBarcode(svg, rowInfo.barcodeText, {
+              format: 'EAN13',
+              displayValue: true,
+              font: 'Arial',
+              fontSize: 14,
+              height: 44,
+              margin: 0,
+              width: 1.6,
+              background: '#ffffff'
+            });
+          }
+        }
+      }
+    }
+
+    function escapeHtml(value) {
+      return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    async function processFile() {
+      if (!state.file) {
+        setStatus('Selecteer eerst een Excel-bestand.', 'warn');
+        return;
+      }
+
+      setStatus('Bestand wordt ingelezen en barcodes worden opgebouwd...', 'warn');
+      els.loadButton.disabled = true;
+      els.downloadButton.disabled = true;
+
+      try {
+        const buffer = await state.file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) throw new Error('Er is geen worksheet gevonden in dit bestand.');
+
+        const found = findHeaderRowAndColumns(worksheet);
+        state.workbook = workbook;
+        state.worksheet = worksheet;
+        state.sheetName = worksheet.name;
+        state.headerRowNumber = found.headerRowNumber;
+        state.eanCol = found.eanCol;
+        state.barcodeCol = found.barcodeCol;
+        state.headers = found.headers;
+        state.fileBaseName = state.file.name.replace(/\.xlsx$/i, '');
+
+        const lastRow = worksheet.actualRowCount || worksheet.rowCount;
+        const lastCol = Math.max(worksheet.actualColumnCount || 0, found.headers.length || 0);
+        const dataRows = [];
+        let barcodeCount = 0;
+
+        for (let rowNumber = state.headerRowNumber + 1; rowNumber <= lastRow; rowNumber++) {
+          const row = worksheet.getRow(rowNumber);
+          const displayValues = readRowDisplayValues(row, lastCol);
+          const rawEANValue = row.getCell(state.eanCol).value;
+          let normalizedEAN = '';
+
+          if (rawEANValue && typeof rawEANValue === 'object') {
+            if (rawEANValue.text) normalizedEAN = formatEAN(rawEANValue.text);
+            else if (rawEANValue.result != null) normalizedEAN = formatEAN(rawEANValue.result);
+          } else {
+            normalizedEAN = formatEAN(rawEANValue);
+          }
+
+          let barcodeDataUrl = null;
+          let barcodeText = '';
+
+          if (isLikelyEAN13(normalizedEAN)) {
+            barcodeText = normalizedEAN;
+            barcodeDataUrl = generateBarcodeDataUrl(barcodeText);
+            barcodeCount++;
+          }
+
+          dataRows.push({ rowNumber, displayValues, barcodeText, barcodeDataUrl });
+        }
+
+        state.dataRows = dataRows;
+        renderPreview();
+
+        els.fileName.textContent = state.file.name;
+        els.sheetName.textContent = state.sheetName;
+        els.rowCount.textContent = String(dataRows.length);
+        els.barcodeCount.textContent = String(barcodeCount);
+
+        setStatus(
+          `Bestand succesvol verwerkt.\nKolom EAN gevonden in ${colToLetter(state.eanCol)} en 'Barcode Terliksabo' in ${colToLetter(state.barcodeCol)}.\nKlik nu op 'Aangepast bestand downloaden'.`,
+          'ok'
+        );
+
+        els.downloadButton.disabled = barcodeCount === 0;
+      } catch (error) {
+        console.error(error);
+        setStatus('Fout tijdens verwerken: ' + error.message, 'error');
+      } finally {
+        els.loadButton.disabled = !state.file;
+      }
+    }
+
+    async function buildDownloadWorkbook() {
+      if (!state.workbook || !state.worksheet) {
+        setStatus('Laad eerst een bestand in en verwerk het.', 'warn');
+        return;
+      }
+
+      setStatus('Downloadbestand wordt opgebouwd...', 'warn');
+      els.downloadButton.disabled = true;
+
+      try {
+        const workbook = state.workbook;
+        const worksheet = state.worksheet;
+
+        const existingColumnWidth = worksheet.getColumn(state.barcodeCol).width;
+        worksheet.getColumn(state.barcodeCol).width = Math.max(existingColumnWidth || 10, 28);
+
+        for (const rowInfo of state.dataRows) {
+          if (!rowInfo.barcodeDataUrl) continue;
+          const row = worksheet.getRow(rowInfo.rowNumber);
+          row.height = Math.max(row.height || 15, 56);
+          const cell = row.getCell(state.barcodeCol);
+          cell.value = null;
+          const imageId = workbook.addImage({ base64: rowInfo.barcodeDataUrl, extension: 'png' });
+          worksheet.addImage(imageId, {
+            tl: { col: state.barcodeCol - 1 + 0.08, row: rowInfo.rowNumber - 1 + 0.10 },
+            ext: { width: 205, height: 52 },
+            editAs: 'oneCell'
+          });
+        }
+
+        const outputBuffer = await workbook.xlsx.writeBuffer();
+        state.outputBuffer = outputBuffer;
+        const blob = new Blob([outputBuffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${state.fileBaseName} - met barcodes.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        setStatus('Het aangepaste Excel-bestand is gegenereerd en gedownload.', 'ok');
+      } catch (error) {
+        console.error(error);
+        setStatus('Fout tijdens maken van downloadbestand: ' + error.message, 'error');
+      } finally {
+        els.downloadButton.disabled = false;
+      }
+    }
+
+    function handleSelectedFile(file) {
+      if (!file) return;
+      if (!/\.xlsx$/i.test(file.name)) {
+        setStatus('Alleen .xlsx bestanden worden ondersteund.', 'error');
+        return;
+      }
+      state.file = file;
+      els.fileName.textContent = file.name;
+      els.loadButton.disabled = false;
+      setStatus('Bestand geselecteerd. Klik op “Bestand verwerken”.', 'warn');
+    }
+
+    els.fileInput.addEventListener('change', (e) => {
+      handleSelectedFile(e.target.files[0]);
+    });
+
+    els.dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      els.dropzone.classList.add('dragover');
+    });
+
+    els.dropzone.addEventListener('dragleave', () => {
+      els.dropzone.classList.remove('dragover');
+    });
+
+    els.dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      els.dropzone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      handleSelectedFile(file);
+    });
+
+    els.loadButton.addEventListener('click', processFile);
+    els.downloadButton.addEventListener('click', buildDownloadWorkbook);
+    els.resetButton.addEventListener('click', resetState);
+    els.searchInput.addEventListener('input', (e) => {
+      state.searchTerm = e.target.value || '';
+      renderPreview();
+    });
+
+    resetState();
+  </script>
+</body>
+</html>
